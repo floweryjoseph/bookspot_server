@@ -113,25 +113,38 @@ export const googleAuth = async (req, res) => {
     return res.status(500).json({ message: "Something Went Wrong!!!" });
   }
   const { name, email } = userData;
+
+
+
   try {
     const user = await User.findOne({
       email: email,
       password: process.env.GOOGLE_USER_PASSWORD,
       google: true,
     });
+
+    
     if (user) {
       const token = JWT.sign({ userId: user._id }, process.env.JWT_SECRET, {
         expiresIn: "1d",
       });
+      
       user.password = "";
+
       return res.json({
         user,
         token,
         expiresIn: Date.now() + 1000 * 60 * 60 * 24,
       });
     }
-
-    const newUser = new User({
+    
+    const userExists = await User.findOne({email:email,
+       google:false})
+    
+      if(userExists) {
+        return res.json({message: "User already exists"})
+      }    
+      const newUser = new User({
       username: name,
       email: email,
       password: process.env.GOOGLE_USER_PASSWORD,
@@ -141,7 +154,6 @@ export const googleAuth = async (req, res) => {
 
     await newUser.save();
     newUser.password = "";
-
     const token = JWT.sign({ userId: newUser._id }, process.env.JWT_SECRET, {
       expiresIn: "1d",
     });
