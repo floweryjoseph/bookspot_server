@@ -142,7 +142,7 @@ export const googleAuth = async (req, res) => {
        google:false})
     
       if(userExists) {
-        return res.json({message: "User already exists"})
+        return res.status(500).json({message: "User already exists"})
       }    
       const newUser = new User({
       username: name,
