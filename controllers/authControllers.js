@@ -114,8 +114,6 @@ export const googleAuth = async (req, res) => {
   }
   const { name, email } = userData;
 
-
-
   try {
     const user = await User.findOne({
       email: email,

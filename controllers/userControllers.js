@@ -2,12 +2,12 @@ import Post from "../models/post-model.js";
 import User from "../models/user-model.js";
 
 export const createPost = async (req, res) => {
-  const { userId, book, author, about, review, cover, rating } = req.body;
+  const { userId, book, author, genre, review, cover, rating } = req.body;
   const newPost = new Post({
     userId,
     book,
     author,
-    about,
+    genre,
     review,
     cover,
     rating,
@@ -25,14 +25,14 @@ export const createPost = async (req, res) => {
 };
 
 export const updatePost = async (req, res) => {
-  const { postId, userId, book, author, about, review, cover, rating  } = req.body;
+  const { postId, userId, book, author, genre, review, cover, rating  } = req.body;
   console.log(postId)
   let post;
   try {
     post = await Post.findOneAndUpdate({_id:postId, userId}, {
       book,
       author,
-      about,
+      genre,
       review,
       cover,
       rating,

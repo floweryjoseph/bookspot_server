@@ -4,7 +4,7 @@ const postSchema= new Schema({
     userId:{type:mongoose.Types.ObjectId, ref:"User", required:true},
     book:{type:String, required:true},
     author:{type:String, required:true},
-    about:{type:String, required:true},
+    genre:{type:String, required:true},
     cover:{type:String, required:true},
     review:{type:String, required:true},    
     rating:{type:Number, required:true},
