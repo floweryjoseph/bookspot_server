@@ -10,33 +10,29 @@ export const register = async (req, res) => {
   const { username, email, password } = req.body;
   
   try {
-   const userExist = await User.findOne({ email });
-   if (userExist) {
-    return res.status(400).json({ message: "User already exists" });
-  }
-  const hashedPassword = await bcrypt.hash(password, 12);
-
-  const newUser = new User({
-    username:username,
-    email:email,
-    password: hashedPassword,
-    google:false,
-    verified:true,
-  });
-  await newUser.save();
-  newUser.password = "";
-
-  return res
-  .status(201)
-  .json({ message: "User saved successfully", user: newUser });
-
-  } catch(error) {
-    if(error.code === 11000){
-        return res.status(400).json({ message: "User already exists!!"});
+    const lowercaseEmail = email.toLowerCase();
+    const userExist = await User.findOne({ email: lowercaseEmail });
+    if (userExist) {
+      return res.status(400).json({ message: "User already exists" });
     }
-    return res
-    .status(500)
-    .json({ message: "Internal Server Error", error: error.message });
+    const hashedPassword = await bcrypt.hash(password, 12);
+
+    const newUser = new User({
+      username: username,
+      email: lowercaseEmail,
+      password: hashedPassword,
+      google: false,
+      verified: true,
+    });
+    await newUser.save();
+    newUser.password = "";
+
+    return res.status(201).json({ message: "User saved successfully", user: newUser });
+  } catch (error) {
+    if (error.code === 11000) {
+      return res.status(400).json({ message: "User already exists!" });
+    }
+    return res.status(500).json({ message: "Internal Server Error", error: error.message });
   }
 };
 
@@ -44,36 +40,30 @@ export const login = async (req, res) => {
   const { email, password } = req.body;
 
   try {
-    const userExists = await User.findOne({ email: email });
+    const lowercaseEmail = email.toLowerCase();
+    const userExists = await User.findOne({ email: lowercaseEmail });
     if (!userExists) {
       return res.status(404).json({ message: "Invalid Email" });
     }
     const validPassword = await bcrypt.compare(password, userExists.password);
 
-    if(!validPassword) {
+    if (!validPassword) {
       return res.status(404).json({ message: "Invalid Password" });
     }
    
-  const token = JWT.sign(
-        { userId: userExists._id },
-        process.env.JWT_SECRET,
-        { expiresIn: "1d" }
-      );
+    const token = JWT.sign({ userId: userExists._id }, process.env.JWT_SECRET, { expiresIn: "1d" });
 
-      userExists.password = "";
+    userExists.password = "";
 
-      return res
-        .status(200)
-        .json({
-          user: userExists,
-          token,
-          expiresIn: Date.now() + 1000 * 60 * 60 * 24,
-        });
-    }catch(error){
-      return res.status(500).json({message: "Internal Server Error", error: error.message});
-    } 
-  };
-
+    return res.status(200).json({
+      user: userExists,
+      token,
+      expiresIn: Date.now() + 1000 * 60 * 60 * 24,
+    });
+  } catch (error) {
+    return res.status(500).json({ message: "Internal Server Error", error: error.message });
+  }
+};
 
 export const googleAuth = async (req, res) => {
   const credential = req.body.credential;
@@ -92,19 +82,13 @@ export const googleAuth = async (req, res) => {
    
     const payload = ticket.getPayload();
   
-
-    if (
-      payload.iss !== "https://accounts.google.com" ||
-      payload.aud !== process.env.GOOGLE_CLIENT_ID
-    ) {
+    if (payload.iss !== "https://accounts.google.com" || payload.aud !== process.env.GOOGLE_CLIENT_ID) {
       throw new Error("Invalid Google ID token");
     }
 
     userData = payload;
   } catch (err) {
-    return res
-      .status(500)
-      .json({ message: "Error verifying google ID", error: err.message });
+    return res.status(500).json({ message: "Error verifying google ID", error: err.message });
   }
   if (!userData) {
     return res.status(500).json({ message: "Something Went Wrong!!!" });
@@ -112,17 +96,15 @@ export const googleAuth = async (req, res) => {
   const { name, email } = userData;
 
   try {
+    const lowercaseEmail = email.toLowerCase();
     const user = await User.findOne({
-      email: email,
+      email: lowercaseEmail,
       password: process.env.GOOGLE_USER_PASSWORD,
       google: true,
     });
 
-    
     if (user) {
-      const token = JWT.sign({ userId: user._id }, process.env.JWT_SECRET, {
-        expiresIn: "1d",
-      });
+      const token = JWT.sign({ userId: user._id }, process.env.JWT_SECRET, { expiresIn: "1d" });
       
       user.password = "";
 
@@ -133,15 +115,13 @@ export const googleAuth = async (req, res) => {
       });
     }
     
-    const userExists = await User.findOne({email:email,
-       google:false})
-    
-      if(userExists) {
-        return res.status(500).json({message: "User already exists"})
-      }    
-      const newUser = new User({
+    const userExists = await User.findOne({ email: lowercaseEmail, google: false });
+    if (userExists) {
+      return res.status(500).json({ message: "User already exists" });
+    }    
+    const newUser = new User({
       username: name,
-      email: email,
+      email: lowercaseEmail,
       password: process.env.GOOGLE_USER_PASSWORD,
       google: true,
       verified: true,
@@ -149,9 +129,7 @@ export const googleAuth = async (req, res) => {
 
     await newUser.save();
     newUser.password = "";
-    const token = JWT.sign({ userId: newUser._id }, process.env.JWT_SECRET, {
-      expiresIn: "1d",
-    });
+    const token = JWT.sign({ userId: newUser._id }, process.env.JWT_SECRET, { expiresIn: "1d" });
 
     return res.json({
       message: "User saved successfully",
@@ -160,9 +138,9 @@ export const googleAuth = async (req, res) => {
       expiresIn: Date.now() + 1000 * 60 * 60 * 24,
     });
   } catch (err) {
-    if(err.code === 11000){
-      return res.json(400).json({message:"User already exists"});
+    if (err.code === 11000) {
+      return res.json(400).json({ message: "User already exists" });
     }
-    return res.status(500).json({ message: "Internal Server Error" , error:err.message});
+    return res.status(500).json({ message: "Internal Server Error", error: err.message });
   }
 };
