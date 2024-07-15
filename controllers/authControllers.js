@@ -8,17 +8,12 @@ dotenv.config();
 
 export const register = async (req, res) => {
   const { username, email, password } = req.body;
-  let userExist;
+  
   try {
-    userExist = await User.findOne({ email });
-  } catch {
-    return res.status(404).json({ message: "Internal Server error" });
-  }
-
-  if (userExist) {
+   const userExist = await User.findOne({ email });
+   if (userExist) {
     return res.status(400).json({ message: "User already exists" });
   }
-
   const hashedPassword = await bcrypt.hash(password, 12);
 
   const newUser = new User({
@@ -28,42 +23,45 @@ export const register = async (req, res) => {
     google:false,
     verified:true,
   });
-  try {
-    await newUser.save();
-    newUser.password = "";
-   
+  await newUser.save();
+  newUser.password = "";
+
+  return res
+  .status(201)
+  .json({ message: "User saved successfully", user: newUser });
+
+  } catch(error) {
+    if(error.code === 11000){
+        return res.status(400).json({ message: "User already exists!!"});
+    }
     return res
-      .status(201)
-      .json({ message: "User saved successfully", user: newUser });
-  } catch (error) {
-    return res
-      .status(500)
-      .json({ message: "Internal Server Error", error: error.message });
+    .status(500)
+    .json({ message: "Internal Server Error", error: error.message });
   }
 };
+
 export const login = async (req, res) => {
   const { email, password } = req.body;
 
-  let userExists;
-
   try {
-    userExists = await User.findOne({ email: email });
-  } catch {
-    return res.status(404).json({ message: "Internal Server error" });
-  }
-
-  if (!userExists) {
-    return res.status(404).json({ message: "Invalid Email" });
-  }
-  if (userExists) {
+    const userExists = await User.findOne({ email: email });
+    if (!userExists) {
+      return res.status(404).json({ message: "Invalid Email" });
+    }
     const validPassword = await bcrypt.compare(password, userExists.password);
-    if (validPassword) {
-      const token = JWT.sign(
+
+    if(!validPassword) {
+      return res.status(404).json({ message: "Invalid Password" });
+    }
+   
+  const token = JWT.sign(
         { userId: userExists._id },
         process.env.JWT_SECRET,
         { expiresIn: "1d" }
       );
+
       userExists.password = "";
+
       return res
         .status(200)
         .json({
@@ -71,11 +69,11 @@ export const login = async (req, res) => {
           token,
           expiresIn: Date.now() + 1000 * 60 * 60 * 24,
         });
-    } else {
-      return res.status(404).json({ message: "Invalid Password" });
-    }
-  }
-};
+    }catch(error){
+      return res.status(500).json({message: "Internal Server Error", error: error.message});
+    } 
+  };
+
 
 export const googleAuth = async (req, res) => {
   const credential = req.body.credential;
@@ -91,9 +89,9 @@ export const googleAuth = async (req, res) => {
       idToken: credential,
       audience: process.env.GOOGLE_CLIENT_ID,
     });
-    console.log(ticket);
+   
     const payload = ticket.getPayload();
-    console.log(payload);
+  
 
     if (
       payload.iss !== "https://accounts.google.com" ||
@@ -103,7 +101,6 @@ export const googleAuth = async (req, res) => {
     }
 
     userData = payload;
-    console.log(userData);
   } catch (err) {
     return res
       .status(500)
@@ -163,6 +160,9 @@ export const googleAuth = async (req, res) => {
       expiresIn: Date.now() + 1000 * 60 * 60 * 24,
     });
   } catch (err) {
-    return res.status(500).json({ message: "Internal Server Error" }, err);
+    if(err.code === 11000){
+      return res.json(400).json({message:"User already exists"});
+    }
+    return res.status(500).json({ message: "Internal Server Error" , error:err.message});
   }
 };
